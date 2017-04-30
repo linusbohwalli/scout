@@ -25,6 +25,12 @@ const (
 )
 
 //config defines configuration files for eventemitting
+//ScanPath sets path of where to scan for files
+//LogPath sets path to write log files
+//MaxBuffers sets how big the buffered channels should be
+//Exclude is a slice of extensions to be excluded from fileEventEmitting
+//PubHost sets publisher client host
+//PubPort sets publisher client port
 type config struct {
 	ScanPath   string
 	LogPath    string
@@ -53,13 +59,16 @@ func newConfig() (*config, error) {
 	return config, nil
 }
 
-//Event contains information about a FileEvent and FileInfo for concerned file that needs to be published to subscribers
+//event contains information about a FileEvent and FileInfo for concerned file that needs to be published to subscribers
 type event struct {
 	*pb.FileEvent
 }
 
-//FileEventEmitter defines the fileEventEmitter structure
-//Wraps log.Logger
+//fileEventEmitter defines the fileEventEmitter structure
+//eventChan is initiated to receive events from notify
+//newEventChan is initiated to send and receive new events
+//errorChan is initiated to send and receive fileEventEmitter errors
+//log, config, conn, lock is wrappers
 type fileEventEmitter struct {
 	eventChan    chan notify.EventInfo
 	newEventChan chan *event
@@ -72,7 +81,6 @@ type fileEventEmitter struct {
 }
 
 //NewFileEventEmitter returns a new fileEventEmitter
-//Will read config file from configPath
 func NewFileEventEmitter() (*fileEventEmitter, error) {
 
 	config, err := newConfig()
@@ -127,7 +135,6 @@ func (fee *fileEventEmitter) handleNewEvent(ev notify.EventInfo) {
 			return
 		}
 
-		//TODO: implement error logic for newEvent
 		event := fee.newEvent(ev, stat)
 		if event == nil {
 			fee.errorChan <- errors.New("Something went wrong during creation of newEvent")
@@ -170,12 +177,14 @@ func (fee *fileEventEmitter) Start() {
 	s := runDefaultServer()
 	defer s.Shutdown()
 
+	//Open publisher client connection
 	addr := fmt.Sprintf("nats://%v:%d", fee.config.PubHost, fee.config.PubPort)
 	conn, err := nats.Connect(addr)
 	if err != nil {
 		fee.log.Printf("Error during connection to NATS server: %v", err)
 	}
 
+	//assign conn to fileEventEmitter
 	fee.conn = conn
 	defer fee.conn.Close()
 
@@ -206,17 +215,6 @@ func (fee *fileEventEmitter) Start() {
 
 	//Blocking receive, which will indicate when we release go routine and shutdown fileEventEmitter
 	<-fee.shutdownChan
-}
-
-//Stop stops the service
-func (fee *fileEventEmitter) Stop() {
-
-	//close channels
-	close(fee.errorChan)
-	close(fee.eventChan)
-	close(fee.newEventChan)
-	fee.shutdownChan <- true
-	//TODO: Find solution to fix closing
 }
 
 //Embedded NATS server handling
