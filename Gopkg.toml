@@ -1,0 +1,20 @@
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/golang/protobuf"
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/google/uuid"
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/pkg/errors"
+
+[[dependencies]]
+  branch = "master"
+  name = "github.com/rjeczalik/notify"
+
+[[dependencies]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"

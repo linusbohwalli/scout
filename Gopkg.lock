@@ -1,0 +1,37 @@
+memo = "593afcd36e9bc6f4853e4024c857d278f2142a80dd500f15501421d047b69a7e"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/golang/protobuf"
+  packages = ["proto"]
+  revision = "8ee79997227bf9b34611aee7946ae64735e6fd93"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "248dadf4e9068a0b3e79f02ed0a610d935de5302"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/rjeczalik/notify"
+  packages = ["."]
+  revision = "660542b98f76c58910002c82e912b71248f4daa0"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "7de4796419dc3b554e6dab3a119a62469569d299"
+
+[[projects]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  revision = "a5b47d31c556af34a302ce5d659e6fea44d90de0"

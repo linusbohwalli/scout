@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package fileEventEmitter;
+
+
+//Start messages
+
+//FileEvent contains information when a file is ready to be fetched
+//Fetch contains a bool stating if file is ready to be fetched or not
+//UUID is a unique ID for the FileEvent
+//Timestamp is the time of FileEvent creation
+message FileEvent {
+    bool Fetch = 1;
+    string Timestamp = 2;
+    string UUID = 3;
+    FileInfo FileInfo = 4;
+}
+
+//FileInfo message contains information about file to fetch
+//Path shows location to the file
+//Filename is the name of the file
+//Size is the file size in bytes
+message FileInfo {
+    string Path = 1;
+    string Filename = 2;
+    int64 Size = 3;
+}

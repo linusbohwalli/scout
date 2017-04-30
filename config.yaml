@@ -1,0 +1,29 @@
+#Start of fileEventEmitter settings
+
+#scanPath sets where the root path of where to recursively scan for documents
+scanpath: ./...
+
+#where to write log files
+#log files should not be placed in the scanpath
+logpath: ../../log/fileeventemitter.log
+
+#defines the size of the buffered channels used
+#0 means the channels will be unbuffered
+maxbuffers: 10
+
+#file extension excluded from event emitting
+exclude: 
+- ".tmp"
+- ".swp"
+- ".temp"
+
+#End of fileEventEmitter settings
+
+#Start of Publisher Client Connection settings
+#Host of NATS server to publish events
+pubhost: "localhost"
+
+#Port on which to connect to NATS server to publish events
+pubport: 4222
+
+#End of Publisher Client Connection settings
