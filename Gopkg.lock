@@ -1,4 +1,4 @@
-memo = "593afcd36e9bc6f4853e4024c857d278f2142a80dd500f15501421d047b69a7e"
+memo = "e3314218370c95d1fe569f97f58b49cd77a00620c3d3c24b92f24e791e4b5cbe"
 
 [[projects]]
   branch = "master"
@@ -11,6 +11,30 @@ memo = "593afcd36e9bc6f4853e4024c857d278f2142a80dd500f15501421d047b69a7e"
   name = "github.com/google/uuid"
   packages = ["."]
   revision = "064e2069ce9c359c118179501254f67d7d37ba24"
+
+[[projects]]
+  name = "github.com/nats-io/gnatsd"
+  packages = ["conf","logger","server","server/pse","util"]
+  revision = "5dcad241bcd7fff3aac6e9f8b47350f071f5fd38"
+  version = "v0.9.6"
+
+[[projects]]
+  name = "github.com/nats-io/go-nats"
+  packages = ["."]
+  revision = "61923ed1eaf8398000991fbbee2ef11ab5a5be0d"
+  version = "v1.2.2"
+
+[[projects]]
+  name = "github.com/nats-io/nats"
+  packages = ["encoders/builtin","util"]
+  revision = "61923ed1eaf8398000991fbbee2ef11ab5a5be0d"
+  version = "v1.2.2"
+
+[[projects]]
+  name = "github.com/nats-io/nuid"
+  packages = ["."]
+  revision = "289cccf02c178dc782430d534e3c1f5b72af807f"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -26,9 +50,21 @@ memo = "593afcd36e9bc6f4853e4024c857d278f2142a80dd500f15501421d047b69a7e"
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["bcrypt","blowfish","ssh/terminal"]
+  revision = "c7af5bf2638a1164f2eb5467c39c6cffbd13a02e"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
   revision = "7de4796419dc3b554e6dab3a119a62469569d299"
+
+[[projects]]
+  branch = "v2.0"
+  name = "gopkg.in/natefinch/lumberjack.v2"
+  packages = ["."]
+  revision = "dd45e6a67c53f673bb49ca8a001fd3a63ceb640e"
 
 [[projects]]
   branch = "v2"
