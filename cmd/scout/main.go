@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	emitter "github.com/linusbohwalli/fileEventEmitter"
+	scout "github.com/linusbohwalli/scout"
 )
 
 func main() {
@@ -16,9 +16,9 @@ func main() {
 		return
 	}
 
-	fee, err := emitter.NewFileEventEmitter()
+	fee, err := scout.NewScout()
 	if err != nil {
-		log.Fatalf("unable to initialze new file event emitter: %v", err)
+		log.Fatalf("unable to initialze new file event scout: %v", err)
 	}
 
 	switch os.Args[1] {
@@ -29,7 +29,7 @@ func main() {
 
 	case "stop":
 		fmt.Println("Shutdown signal received...")
-		fee.Stop()
+		//fee.Stop()
 
 	default:
 		fmt.Println("Command does not exist")

@@ -1,4 +1,4 @@
-package fileEventEmitter
+package scout
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/google/uuid"
-	pb "github.com/linusbohwalli/fileEventEmitter/api"
+	pb "github.com/linusbohwalli/scout/api"
 	"github.com/nats-io/gnatsd/server"
 	nats "github.com/nats-io/go-nats"
 	"github.com/pkg/errors"
@@ -21,14 +21,14 @@ import (
 )
 
 const (
-	configPath = "/Users/linus/development/go/src/github.com/linusbohwalli/fileEventEmitter/config.yaml"
+	configPath = "/etc/scout/scout.yaml"
 )
 
-//config defines configuration files for eventemitting
+//config defines configurable settings for the scouting
 //ScanPath sets path of where to scan for files
 //LogPath sets path to write log files
 //MaxBuffers sets how big the buffered channels should be
-//Exclude is a slice of extensions to be excluded from fileEventEmitting
+//Exclude is a slice of extensions to be excluded from scouting
 //PubHost sets publisher client host
 //PubPort sets publisher client port
 type config struct {
@@ -43,7 +43,7 @@ type config struct {
 //newConfig returns a config
 func newConfig() (*config, error) {
 
-	//Read config.yaml
+	//Read config file
 	file, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return nil, err
@@ -59,19 +59,19 @@ func newConfig() (*config, error) {
 	return config, nil
 }
 
-//event contains information about a FileEvent and FileInfo for concerned file that needs to be published to subscribers
-type event struct {
-	*pb.FileEvent
+//report contains information about a ScoutReport and FileInfo for concerned file that needs to be published to subscribers
+type report struct {
+	*pb.ScoutReport
 }
 
-//fileEventEmitter defines the fileEventEmitter structure
+//scout defines the structure of scout
 //eventChan is initiated to receive events from notify
 //newEventChan is initiated to send and receive new events
-//errorChan is initiated to send and receive fileEventEmitter errors
+//errorChan is initiated to send and receive scout errors
 //log, config, conn, lock is wrappers
-type fileEventEmitter struct {
+type scout struct {
 	eventChan    chan notify.EventInfo
-	newEventChan chan *event
+	newEventChan chan *report
 	errorChan    chan error
 	shutdownChan chan bool
 	log          *log.Logger
@@ -80,20 +80,25 @@ type fileEventEmitter struct {
 	lock         *sync.Mutex
 }
 
-//NewFileEventEmitter returns a new fileEventEmitter
-func NewFileEventEmitter() (*fileEventEmitter, error) {
+//NewScout returns a new scout
+func NewScout() (*scout, error) {
 
 	config, err := newConfig()
 	if err != nil {
 		return nil, err
 	}
 
+	//TODO: fix switch statement?
+	if config == nil || config.LogPath == "" || config.ScanPath == "" || config.PubHost == "" || config.PubPort == 0 {
+		return nil, errors.New("Config is empty or missing mandatory data, please make sure to fill out mandatory values in the config file")
+	}
+
 	logger := new(log.Logger)
 	logger.SetOutput(&lumberjack.Logger{Filename: config.LogPath, MaxSize: 100})
 
-	return &fileEventEmitter{
+	return &scout{
 		eventChan:    make(chan notify.EventInfo, config.MaxBuffers),
-		newEventChan: make(chan *event, config.MaxBuffers),
+		newEventChan: make(chan *report, config.MaxBuffers),
 		errorChan:    make(chan error, config.MaxBuffers),
 		shutdownChan: make(chan bool),
 		log:          logger,
@@ -103,15 +108,16 @@ func NewFileEventEmitter() (*fileEventEmitter, error) {
 }
 
 //handleNewEvent handles the received event from eventChan and notify
-func (fee *fileEventEmitter) handleNewEvent(ev notify.EventInfo) {
+func (sct *scout) handleNewEvent(ev notify.EventInfo) {
 
 	stat, err := os.Stat(ev.Path())
 	if err != nil {
 		if err.Error() == "stat "+ev.Path()+": "+"no such file or directory" {
-			fee.errorChan <- errors.New("file or directory was either removed or did not exist")
+			//TODO: Suppress this error?
+			sct.errorChan <- errors.New("file or directory was either removed or did not exist")
 			return
 		}
-		fee.errorChan <- err
+		sct.errorChan <- err
 		return
 	}
 
@@ -122,36 +128,40 @@ func (fee *fileEventEmitter) handleNewEvent(ev notify.EventInfo) {
 
 	if (ev.Event() == notify.Create || ev.Event() == notify.Rename) && !stat.IsDir() {
 
-		for _, v := range fee.config.Exclude {
-			if strings.HasSuffix(stat.Name(), v) {
-				fee.errorChan <- errors.Errorf("File, %v is excluded from event handling", stat.Name())
+		for _, v := range sct.config.Exclude {
+
+			switch {
+
+			//Do not proceed with excluded file extensions
+			case strings.HasSuffix(stat.Name(), v):
+				sct.errorChan <- errors.Errorf("File, %v is excluded from event handling", ev.Path())
 				return
+
+			//Do not proceed with excluded directories
+			case strings.Contains(ev.Path(), v):
+				sct.errorChan <- errors.Errorf("File, %v is excluded from event handling due to being in a temp directory", stat.Name())
+				return
+
 			}
 		}
 
-		//Do not proceed with temp directories
-		if strings.Contains(ev.Path(), "temp") {
-			fee.errorChan <- errors.Errorf("File, %v is excluded from event handling due to being in a temp directory", stat.Name())
-			return
-		}
-
-		event := fee.newEvent(ev, stat)
+		event := sct.newEvent(ev, stat)
 		if event == nil {
-			fee.errorChan <- errors.New("Something went wrong during creation of newEvent")
+			sct.errorChan <- errors.New("Something went wrong during creation of newEvent")
 		}
 
-		fee.newEventChan <- event
+		sct.newEventChan <- event
 	}
 }
 
 //newEvent receives a notify watcher event, and the FileInfo from Stat command on the particular event
 //returns a pointer to an event to be published to any listeners
-func (fee *fileEventEmitter) newEvent(ev notify.EventInfo, stat os.FileInfo) *event {
+func (sct *scout) newEvent(ev notify.EventInfo, stat os.FileInfo) *report {
 
 	//TODO: implement error logic
 	//map event data
-	return &event{
-		&pb.FileEvent{
+	return &report{
+		&pb.ScoutReport{
 			Fetch:     true,
 			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 			UUID:      uuid.New().String(),
@@ -164,13 +174,13 @@ func (fee *fileEventEmitter) newEvent(ev notify.EventInfo, stat os.FileInfo) *ev
 	}
 }
 
-//Start starts the fileeventemitter by watching the ScanPath which is defined in the config.yaml file.
-//Recursive watching is supported. Example to watch current directory recursively: "./..."
-func (fee *fileEventEmitter) Start() {
+//Start starts the scout by watching the ScanPath which is defined in /etc/scout/scout.yaml file.
+//The scout is able to recursively watch a directory. Example to watch current directory recursively: "./..."
+func (sct *scout) Start() {
 
 	//implement go routine function?
-	if err := notify.Watch(fee.config.ScanPath, fee.eventChan, notify.Create, notify.Rename); err != nil {
-		fee.log.Printf("%v", errors.New("Unable to recursively watch current working directory"))
+	if err := notify.Watch(sct.config.ScanPath, sct.eventChan, notify.Create, notify.Rename); err != nil {
+		sct.log.Printf("%v", errors.New("Unable to recursively watch current working directory"))
 	}
 
 	//Start Embedded NATS Server
@@ -178,43 +188,43 @@ func (fee *fileEventEmitter) Start() {
 	defer s.Shutdown()
 
 	//Open publisher client connection
-	addr := fmt.Sprintf("nats://%v:%d", fee.config.PubHost, fee.config.PubPort)
+	addr := fmt.Sprintf("nats://%v:%d", sct.config.PubHost, sct.config.PubPort)
 	conn, err := nats.Connect(addr)
 	if err != nil {
-		fee.log.Printf("Error during connection to NATS server: %v", err)
+		sct.log.Printf("Error during connection to NATS server: %v", err)
 	}
 
-	//assign conn to fileEventEmitter
-	fee.conn = conn
-	defer fee.conn.Close()
+	//assign conn to scout
+	sct.conn = conn
+	defer sct.conn.Close()
 
 	//init go routine for event and error
 	go func() {
 		for {
 			select {
-			case ev := <-fee.eventChan:
+			case ev := <-sct.eventChan:
 				//spin up go routines to handleNewEvent
-				go fee.handleNewEvent(ev)
-			case newEvent := <-fee.newEventChan:
-				fee.lock.Lock()
-				fee.log.Printf("Received new event via channel: %v", newEvent)
+				go sct.handleNewEvent(ev)
+			case newEvent := <-sct.newEventChan:
+				sct.lock.Lock()
+				sct.log.Printf("Received new report via channel: %v", newEvent)
 
-				data := fmt.Sprintf("%v", newEvent.FileEvent)
-				msg := &nats.Msg{Subject: "fileEvent", Data: []byte(data)}
-				fee.conn.PublishMsg(msg)
+				data := fmt.Sprintf("%v", newEvent.ScoutReport)
+				msg := &nats.Msg{Subject: "ScoutReport", Data: []byte(data)}
+				sct.conn.PublishMsg(msg)
 
-				fee.log.Printf("Published followong msg to NATS server: Subject: %v | %v", msg.Subject, string(msg.Data))
+				sct.log.Printf("Published followong msg to NATS server: Subject: %v | %v", msg.Subject, string(msg.Data))
 
-				fee.lock.Unlock()
+				sct.lock.Unlock()
 
-			case err := <-fee.errorChan:
-				fee.log.Printf("Error: %v", err)
+			case err := <-sct.errorChan:
+				sct.log.Printf("Error: %v", err)
 			}
 		}
 	}()
 
-	//Blocking receive, which will indicate when we release go routine and shutdown fileEventEmitter
-	<-fee.shutdownChan
+	//Blocking receive, which will indicate when we release go routine and shutdown scout
+	<-sct.shutdownChan
 }
 
 //Embedded NATS server handling

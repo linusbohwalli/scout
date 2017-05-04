@@ -1,2 +1,2 @@
 gen-rpc:
-	protoc -I ./api ./api/fileEventEmitter.proto --go_out=plugins=grpc:./api
+	protoc -I ./api ./api/scout.proto --go_out=plugins=grpc:./api

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package fileEventEmitter;
+package scout;
 
 
 //Start messages
@@ -9,7 +9,7 @@ package fileEventEmitter;
 //Fetch contains a bool stating if file is ready to be fetched or not
 //UUID is a unique ID for the FileEvent
 //Timestamp is the time of FileEvent creation
-message FileEvent {
+message ScoutReport {
     bool Fetch = 1;
     string Timestamp = 2;
     string UUID = 3;
