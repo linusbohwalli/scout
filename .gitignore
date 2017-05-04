@@ -40,4 +40,4 @@ Thumbs.db
 
 # Directories to be ignored #
 #############################
-./.idea/*
+.idea/
