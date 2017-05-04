@@ -36,3 +36,8 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+
+# Directories to be ignored #
+#############################
+./.idea/*
