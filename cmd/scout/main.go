@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	scout "github.com/linusbohwalli/scout"
+	"github.com/linusbohwalli/scout"
 )
 
 func main() {
@@ -16,7 +16,7 @@ func main() {
 		return
 	}
 
-	fee, err := scout.NewScout()
+	sct, err := scout.NewScout()
 	if err != nil {
 		log.Fatalf("unable to initialze new file event scout: %v", err)
 	}
@@ -25,7 +25,7 @@ func main() {
 	case "start":
 		fmt.Println("Service successfully started enjoy!")
 
-		fee.Start()
+		sct.Start()
 
 	case "stop":
 		fmt.Println("Shutdown signal received...")

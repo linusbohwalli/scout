@@ -53,7 +53,7 @@ func newConfig() (*config, error) {
 
 	//Unmarshal yaml to config struct
 	if err := yaml.Unmarshal(file, &config); err != nil {
-		return nil, errors.New("Unable to unmarshal config")
+		return nil, errors.New("ERROR: Unable to unmarshal config")
 	}
 
 	return config, nil
@@ -65,19 +65,19 @@ type report struct {
 }
 
 //scout defines the structure of scout
-//eventChan is initiated to receive events from notify
-//newEventChan is initiated to send and receive new events
+//reportChan is initiated to receive events from notify
+//newReportChan is initiated to send and receive new events
 //errorChan is initiated to send and receive scout errors
 //log, config, conn, lock is wrappers
 type scout struct {
-	eventChan    chan notify.EventInfo
-	newEventChan chan *report
-	errorChan    chan error
-	shutdownChan chan bool
-	log          *log.Logger
-	config       *config
-	conn         *nats.Conn
-	lock         *sync.Mutex
+	reportChan    chan notify.EventInfo
+	newReportChan chan *report
+	errorChan     chan error
+	shutdownChan  chan bool
+	log           *log.Logger
+	config        *config
+	conn          *nats.Conn
+	lock          *sync.Mutex
 }
 
 //NewScout returns a new scout
@@ -90,31 +90,30 @@ func NewScout() (*scout, error) {
 
 	//TODO: fix switch statement?
 	if config == nil || config.LogPath == "" || config.ScanPath == "" || config.PubHost == "" || config.PubPort == 0 {
-		return nil, errors.New("Config is empty or missing mandatory data, please make sure to fill out mandatory values in the config file")
+		return nil, errors.New("ERROR: Config is empty or missing mandatory data, please make sure to fill out mandatory values in the config file")
 	}
 
 	logger := new(log.Logger)
 	logger.SetOutput(&lumberjack.Logger{Filename: config.LogPath, MaxSize: 100})
 
 	return &scout{
-		eventChan:    make(chan notify.EventInfo, config.MaxBuffers),
-		newEventChan: make(chan *report, config.MaxBuffers),
-		errorChan:    make(chan error, config.MaxBuffers),
-		shutdownChan: make(chan bool),
-		log:          logger,
-		config:       config,
-		lock:         new(sync.Mutex),
+		reportChan:    make(chan notify.EventInfo, config.MaxBuffers),
+		newReportChan: make(chan *report, config.MaxBuffers),
+		errorChan:     make(chan error, config.MaxBuffers),
+		shutdownChan:  make(chan bool),
+		log:           logger,
+		config:        config,
+		lock:          &sync.Mutex{},
 	}, nil
 }
 
-//handleNewEvent handles the received event from eventChan and notify
-func (sct *scout) handleNewEvent(ev notify.EventInfo) {
+//handleNewReport handles the received event from reportChan and notify
+func (sct *scout) handleNewReport(ev notify.EventInfo) {
 
 	stat, err := os.Stat(ev.Path())
 	if err != nil {
 		if err.Error() == "stat "+ev.Path()+": "+"no such file or directory" {
-			//TODO: Suppress this error?
-			sct.errorChan <- errors.New("file or directory was either removed or did not exist")
+			//TODO: Ignore this error? Better handling?
 			return
 		}
 		sct.errorChan <- err
@@ -130,36 +129,27 @@ func (sct *scout) handleNewEvent(ev notify.EventInfo) {
 
 		for _, v := range sct.config.Exclude {
 
-			switch {
-
-			//Do not proceed with excluded file extensions
-			case strings.HasSuffix(stat.Name(), v):
-				sct.errorChan <- errors.Errorf("File, %v is excluded from event handling", ev.Path())
+			//Do not proceed with excluded files and directories
+			if strings.Contains(ev.Path(), v) {
+				sct.errorChan <- errors.Errorf("INFO: %v is excluded from report handling", ev.Path())
 				return
-
-			//Do not proceed with excluded directories
-			case strings.Contains(ev.Path(), v):
-				sct.errorChan <- errors.Errorf("File, %v is excluded from event handling due to being in a temp directory", stat.Name())
-				return
-
 			}
 		}
 
-		event := sct.newEvent(ev, stat)
-		if event == nil {
-			sct.errorChan <- errors.New("Something went wrong during creation of newEvent")
+		report := sct.newReport(ev, stat)
+		if report == nil {
+			sct.errorChan <- errors.New("ERROR: New report returned NIL")
 		}
 
-		sct.newEventChan <- event
+		sct.newReportChan <- report
 	}
 }
 
-//newEvent receives a notify watcher event, and the FileInfo from Stat command on the particular event
+//newReport receives a notify watcher event, and the FileInfo from Stat command on the particular event
 //returns a pointer to an event to be published to any listeners
-func (sct *scout) newEvent(ev notify.EventInfo, stat os.FileInfo) *report {
+func (sct *scout) newReport(ev notify.EventInfo, stat os.FileInfo) *report {
 
-	//TODO: implement error logic
-	//map event data
+	//map report data
 	return &report{
 		&pb.ScoutReport{
 			Fetch:     true,
@@ -178,9 +168,8 @@ func (sct *scout) newEvent(ev notify.EventInfo, stat os.FileInfo) *report {
 //The scout is able to recursively watch a directory. Example to watch current directory recursively: "./..."
 func (sct *scout) Start() {
 
-	//implement go routine function?
-	if err := notify.Watch(sct.config.ScanPath, sct.eventChan, notify.Create, notify.Rename); err != nil {
-		sct.log.Printf("%v", errors.New("Unable to recursively watch current working directory"))
+	if err := notify.Watch(sct.config.ScanPath, sct.reportChan, notify.Create, notify.Rename); err != nil {
+		sct.log.Printf("ERROR: %v", errors.New("Unable to recursively watch current working directory"))
 	}
 
 	//Start Embedded NATS Server
@@ -191,7 +180,7 @@ func (sct *scout) Start() {
 	addr := fmt.Sprintf("nats://%v:%d", sct.config.PubHost, sct.config.PubPort)
 	conn, err := nats.Connect(addr)
 	if err != nil {
-		sct.log.Printf("Error during connection to NATS server: %v", err)
+		sct.log.Printf("ERROR: Error during connection to NATS server: %v", err)
 	}
 
 	//assign conn to scout
@@ -202,23 +191,22 @@ func (sct *scout) Start() {
 	go func() {
 		for {
 			select {
-			case ev := <-sct.eventChan:
-				//spin up go routines to handleNewEvent
-				go sct.handleNewEvent(ev)
-			case newEvent := <-sct.newEventChan:
+			case ev := <-sct.reportChan:
+				//spin up go routines to handleNewReport
+				go sct.handleNewReport(ev)
+			case newReport := <-sct.newReportChan:
 				sct.lock.Lock()
-				sct.log.Printf("Received new report via channel: %v", newEvent)
 
-				data := fmt.Sprintf("%v", newEvent.ScoutReport)
+				data := fmt.Sprintf("%v", newReport.ScoutReport)
 				msg := &nats.Msg{Subject: "ScoutReport", Data: []byte(data)}
 				sct.conn.PublishMsg(msg)
 
-				sct.log.Printf("Published followong msg to NATS server: Subject: %v | %v", msg.Subject, string(msg.Data))
+				sct.log.Printf("INFO: Published msg to NATS server: Subject: %v | %v", msg.Subject, string(msg.Data))
 
 				sct.lock.Unlock()
 
 			case err := <-sct.errorChan:
-				sct.log.Printf("Error: %v", err)
+				sct.log.Printf("ERROR: %v", err)
 			}
 		}
 	}()
