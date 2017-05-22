@@ -5,7 +5,7 @@ package scout;
 
 //Start messages
 
-//FileEvent contains information when a file is ready to be fetched
+//ScoutReport contains information when a file is ready to be fetched
 //Fetch contains a bool stating if file is ready to be fetched or not
 //UUID is a unique ID for the FileEvent
 //Timestamp is the time of FileEvent creation
