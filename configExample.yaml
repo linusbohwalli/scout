@@ -1,14 +1,15 @@
 #Start of fileEventEmitter settings
 
 #scanPath sets where the root path of where to recursively scan for documents
-scanpath: ./...
+scanpath: /Users/linus/development/go/src/github.com/linusbohwalli/scout/... 
 
 #where to write log files
 #log files should not be placed in the scanpath
-logpath: ../../log/fileeventemitter.log
+logpath: /var/log/scout/scout.log
 
 #defines the size of the buffered channels used
 #0 means the channels will be unbuffered
+#it is recommended to keep buffered channels to make sure no report is dropped
 maxbuffers: 10
 
 #file extension excluded from event emitting
@@ -16,10 +17,12 @@ exclude:
 - ".tmp"
 - ".swp"
 - ".temp"
+- "temp"
+- ".idea"
 
 #End of fileEventEmitter settings
 
-#Start of Publisher Client Connection settings
+#Start of Publisher Server connection settings
 #Host of NATS server to publish events
 pubhost: "localhost"
 
@@ -27,3 +30,6 @@ pubhost: "localhost"
 pubport: 4222
 
 #End of Publisher Client Connection settings
+
+
+
