@@ -14,7 +14,6 @@ The scout support recursive scouting which makes it very simple to check for fil
 
 */
 
-
 import (
 	"fmt"
 	"io/ioutil"
@@ -52,11 +51,9 @@ type config struct {
 	MaxBuffers int
 	Exclude    []string
 
-
 	//Configuration for Nats server used for publishing
-	PubHost    string
-	PubPort    int
-
+	PubHost string
+	PubPort int
 }
 
 //newConfig returns a config
@@ -211,7 +208,6 @@ func (sct *scout) Start(def bool) {
 	var s *server.Server
 	//Start Embedded NATS Server
 
-
 	switch {
 
 	//if default flag is provided use defualt options
@@ -232,7 +228,7 @@ func (sct *scout) Start(def bool) {
 
 		s = runServer(&server.Options{
 			Host: sct.config.PubHost,
-			Port: sct. config.PubPort,
+			Port: sct.config.PubPort,
 		})
 
 	default:
@@ -251,7 +247,6 @@ func (sct *scout) Start(def bool) {
 	//assign conn to scout
 	sct.conn = conn
 	defer sct.conn.Close()
-
 
 	fmt.Printf("%v\n", "Scout successfully started...")
 
