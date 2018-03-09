@@ -10,7 +10,7 @@ For more information regarding nats clients and servers, please visit nats.io
 The common use case for scout is for server suppliers to implement a push method from their server instead of polling files.
 
 I.e. Server supplier supports an FTP server for user to send files to, instead of checking directories with a polling solution, scout will report back to any listening subscribers if any files have been sent to your server.
-The scout support recursive scouting which makes it very simple to check for files on your system. See scout.yaml for examples.
+The scout support recursive scouting which makes it very simple to check for files on your system. See configExample.yaml for examples.
 
 */
 

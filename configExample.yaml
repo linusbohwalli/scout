@@ -1,6 +1,6 @@
-#Start of fileEventEmitter settings
+#Start of scout settings
 
-#scanPath sets where the root path of where to recursively scan for documents
+#scanPath sets the root path to recursively scan for documents
 scanpath: /Users/linus/development/go/src/github.com/linusbohwalli/scout/... 
 
 #where to write log files
@@ -20,7 +20,7 @@ exclude:
 - "temp"
 - ".idea"
 
-#End of fileEventEmitter settings
+#End of scout settings
 
 #Start of Publisher Server connection settings
 #Host of NATS server to publish events

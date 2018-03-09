@@ -40,3 +40,6 @@ Thumbs.db
 # Directories to be ignored #
 #############################
 .idea/
+vendor/
+bin/
+pkg/
